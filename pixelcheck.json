@@ -1,0 +1,12 @@
+{
+    "connstring": "postgresql://steve@/steve",
+    "smarthost": "mail.example.com:587",
+    "username": "steve",
+    "password": "your-smarthost-password",
+    "from": "steve@blighty.com",
+    "to": "steve@blighty.com",
+    "listen": ":443",
+    "url": "https://pixelcheck.wordtothewise.com/images/{{ .ImageCookie }}.png",
+    "tlscert": "/etc/ssl/certs/kiki.wordtothewise.com.pem",
+    "tlskey": "/etc/ssl/private/kiki.wordtothewise.com.key"
+}
