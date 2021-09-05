@@ -1,25 +1,26 @@
 package pixelcheck
 
 import (
-	"encoding/json"
 	"log"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	DBConn    string `json:"connstring"`
-	URL       string `json:"url"`
-	Listen    string `json:"listen"`
-	To        string `json:"to"`
-	From      string `json:"from"`
-	Smarthost string `json:"smarthost"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Templates string `json:"template_dir"`
-	Cert      string `json:"tlscert"`
-	Key       string `json:"tlskey"`
-	Image     string `json:"image"`
-	ImageDir  string `json:"image_dir"`
+	DBConn    string `yaml:"connstring"`
+	URL       string `yaml:"url"`
+	Listen    string `yaml:"listen"`
+	To        string `yaml:"to"`
+	From      string `yaml:"from"`
+	Smarthost string `yaml:"smarthost"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	Templates string `yaml:"template_dir"`
+	Cert      string `yaml:"tlscert"`
+	Key       string `yaml:"tlskey"`
+	Image     string `yaml:"image"`
+	ImageDir  string `yaml:"image_dir"`
 }
 
 func New(filename string) Config {
@@ -38,7 +39,7 @@ func (c *Config) Load(filename string) {
 	if err != nil {
 		log.Fatalf("Failed to open configuration file %s: %s", filename, err)
 	}
-	err = json.NewDecoder(f).Decode(c)
+	err = yaml.NewDecoder(f).Decode(c)
 	if err != nil {
 		log.Fatalf("Failed to parse configuration file %s: %s", filename, err)
 	}

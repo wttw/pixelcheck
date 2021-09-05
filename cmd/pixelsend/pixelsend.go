@@ -33,7 +33,7 @@ func main() {
 	var note string
 	helpRequest := false
 
-	flag.StringVar(&configFile, "config", "pixelcheck.json", "Alternate configuration file")
+	flag.StringVar(&configFile, "config", "pixelcheck.yaml", "Alternate configuration file")
 	flag.StringVar(&recipient, "to", "", "Recipient")
 	flag.StringVar(&from, "from", "", "822.From")
 	flag.StringVar(&tplName, "template", "default", "Template for message")
@@ -78,51 +78,7 @@ func main() {
 	var imageURL string
 	if imageID == 0 {
 		// Create a new tracking image
-		urlTemplate, err := template.New("path").Parse(c.URL)
-		if err != nil {
-			log.Fatalf("Failed to parse urlString template: %s", err)
-		}
-		if _, err := os.Stat(filepath.Join(c.ImageDir, imageFile)); os.IsNotExist(err) {
-			log.Fatalf("Image file %s doesn't exist", imageFile)
-		}
-		// language=SQL
-		err = db.QueryRow(context.Background(), `insert into image (file) values ($1) returning id`, imageFile).Scan(&imageID)
-		if err != nil {
-			log.Fatalf("Failed to create image: %s", err)
-		}
-
-		// lets make some base26
-		encoded := ""
-		n := imageID
-		for n > 0 {
-			remainder := n % len(alphabet)
-			encoded = alphabet[remainder:remainder+1] + encoded
-			n /= len(alphabet)
-		}
-		var urlString bytes.Buffer
-		err = urlTemplate.Execute(&urlString,
-			struct {
-				ImageID     int
-				ImageCookie string
-				ImageFile   string
-			}{
-				ImageID:     imageID,
-				ImageCookie: encoded,
-				ImageFile:   imageFile,
-			})
-		if err != nil {
-			log.Fatalf("Failed to execute url template: %s", err)
-		}
-		u, err := url.Parse(urlString.String())
-		if err != nil {
-			log.Fatalf("Generated an invalid URL: %s", err)
-		}
-		imageURL = u.String()
-		// language=SQL
-		_, err = db.Exec(context.Background(), `update image set url=$1, path=$2 where id=$3`, imageURL, u.Path, imageID)
-		if err != nil {
-			log.Fatalf("Failed to update image: %s", err)
-		}
+		imageURL, imageID = newImage(c, db, imageFile)
 	} else {
 		// Get existing image
 		var u *string
@@ -135,7 +91,7 @@ func main() {
 		}
 		imageURL = *u
 	}
-	fmt.Printf("from=[%s]\n", from)
+
 	var payload bytes.Buffer
 	err = emailTpl.Execute(&payload, struct {
 		Date     string
@@ -179,7 +135,7 @@ func main() {
 		log.Fatalf("Malformed smarthost string: %s", err)
 	}
 
-	fmt.Printf("Sending mail...\n%s\n", string(enc))
+	// fmt.Printf("Sending mail...\n%s\n", string(enc))
 	auth := smtp.PlainAuth("", c.Username, c.Password, host)
 	err = smtp.SendMail(c.Smarthost, auth, from, []string{recipient}, enc)
 	if err != nil {
@@ -187,4 +143,55 @@ func main() {
 	}
 
 	log.Printf("Mail %d containing image %d (%s) sent", mailID, imageID, imageURL)
+}
+
+func newImage(c pixelcheck.Config, db *pgxpool.Pool, imageFile string) (string, int) {
+	// Create a new tracking image
+	urlTemplate, err := template.New("path").Parse(c.URL)
+	if err != nil {
+		log.Fatalf("Failed to parse urlString template: %s", err)
+	}
+	if _, err := os.Stat(filepath.Join(c.ImageDir, imageFile)); os.IsNotExist(err) {
+		log.Fatalf("Image file %s doesn't exist", imageFile)
+	}
+	var imageID int
+	// language=SQL
+	err = db.QueryRow(context.Background(), `insert into image (file) values ($1) returning id`, imageFile).Scan(&imageID)
+	if err != nil {
+		log.Fatalf("Failed to create image: %s", err)
+	}
+
+	// let's make some base26
+	encoded := ""
+	n := imageID
+	for n > 0 {
+		remainder := n % len(alphabet)
+		encoded = alphabet[remainder:remainder+1] + encoded
+		n /= len(alphabet)
+	}
+	var urlString bytes.Buffer
+	err = urlTemplate.Execute(&urlString,
+		struct {
+			ImageID     int
+			ImageCookie string
+			ImageFile   string
+		}{
+			ImageID:     imageID,
+			ImageCookie: encoded,
+			ImageFile:   imageFile,
+		})
+	if err != nil {
+		log.Fatalf("Failed to execute url template: %s", err)
+	}
+	u, err := url.Parse(urlString.String())
+	if err != nil {
+		log.Fatalf("Generated an invalid URL: %s", err)
+	}
+	imageURL := u.String()
+	// language=SQL
+	_, err = db.Exec(context.Background(), `update image set url=$1, path=$2 where id=$3`, imageURL, u.Path, imageID)
+	if err != nil {
+		log.Fatalf("Failed to update image: %s", err)
+	}
+	return imageURL, imageID
 }

@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	flag "github.com/spf13/pflag"
-	"github.com/wttw/pixelcheck"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	flag "github.com/spf13/pflag"
+	"github.com/wttw/pixelcheck"
 )
 
 const appName = "pixelserve"
@@ -19,7 +20,7 @@ const appName = "pixelserve"
 func main() {
 	var configFile string
 	helpRequest := false
-	flag.StringVar(&configFile, "config", "pixelcheck.json", "Alternate configuration file")
+	flag.StringVar(&configFile, "config", "pixelcheck.yaml", "Alternate configuration file")
 	flag.BoolVarP(&helpRequest, "help", "h", false, "Display brief help")
 
 	flag.Parse()
@@ -87,7 +88,7 @@ func main() {
 		err := db.QueryRow(r.Context(), `select id, file from image where path=$1`, r.URL.Path).Scan(&imageID, &imageFile)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				log.Printf("Received request for non-existent image %s", r.URL.Path)
+				log.Printf("Received request for non-existent image %s %s from %s", r.Host, r.URL.Path, r.RemoteAddr)
 			} else {
 				log.Printf("Error retrieving %s from DB: %s", r.URL.Path, err)
 			}
@@ -106,7 +107,7 @@ func main() {
 		if err != nil {
 			log.Printf("Failed to record load: %s", err)
 		}
-		log.Printf("Returning %s %d for request %d %s", imageFile, imageID, loadID, r.URL)
+		log.Printf("Returning %s %d for request %d %s from %s", imageFile, imageID, loadID, r.URL, r.RemoteAddr)
 		http.ServeFile(w, r, filepath.Join(c.ImageDir, imageFile))
 	})
 	log.Printf("Listening on %s", c.Listen)

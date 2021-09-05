@@ -1,0 +1,21 @@
+---
+# Postgresql access information
+connstring: postgresql://steve@/steve
+# Smarthost address:port, username, password
+smarthost: mail.example.com:587
+username: steve
+password: your-smarthost-password
+# Who the mail is sent from, used for 821.From and in the default template the 822.From
+from: steve@example.com
+# The recipient, used for RCPT TO and in the default template for the To: header
+to: steve@example.com
+# Listen on this IP:port for image loads
+listen: ":443"
+# Use this template for the URL for the image
+url: https://pixelcheck.wordtothewise.com/images/{{ .ImageCookie }}.png
+# If the paths to a TLS certificate and private key are set, use them to serve images
+tlscert: "/etc/ssl/certs/kiki.wordtothewise.com.pem"
+tlskey: "/etc/ssl/private/kiki.wordtothewise.com.key"
+# Default image to serve
+image: teapot.png
+
